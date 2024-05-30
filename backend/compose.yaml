@@ -1,0 +1,10 @@
+services:
+  backend:
+    image: quiz_backend
+    container_name: quiz_backend
+    build:
+      context: .
+      dockerfile: ./dockerfile.dev
+    ports:
+      - 8000:8000
+    working_dir: /app
