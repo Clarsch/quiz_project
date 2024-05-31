@@ -1,0 +1,10 @@
+version: "3.8"
+services:
+  backend:
+    container_name: quiz_backend
+    build:
+      context: ./backend
+      dockerfile: ../backend/dockerfile.dev
+    ports:
+      - 8010:8000
+      # http://localhost:8010/

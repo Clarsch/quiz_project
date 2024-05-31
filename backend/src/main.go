@@ -20,6 +20,6 @@ func main() {
 	http.HandleFunc("/ws", clientManagement.WsEndpoint)
 	http.HandleFunc("/ws/", clientManagement.WsEndpoint)
 
-	http.ListenAndServe(":3333", nil)
+	http.ListenAndServe(":8000", nil)
 
 }

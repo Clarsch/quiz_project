@@ -1,7 +1,6 @@
 #syntax=docker/dockerfile:1
 FROM golang:1.21.8
 
-
 ENV GO111MODULE=on
 ENV GOFLAGS=-mod=vendor
 ENV APP_HOME = /go/src/quizzapp
@@ -9,12 +8,12 @@ RUN mkdir -p "$APP_HOME"
 
 WORKDIR "$APP_HOME"
 COPY ./src ./
-RUN pwd
-
-RUN go mod download -x 
 
 RUN go build -o quizzapp_bin .
-
+RUN pwd
+RUN ls -la
 EXPOSE 8000
 
-ENTRYPOINT [ "/app/quizzapp_bin" ]
+ENTRYPOINT [ "./quizzapp_bin" ]
+
+# http://172.17.0.2:8000/
