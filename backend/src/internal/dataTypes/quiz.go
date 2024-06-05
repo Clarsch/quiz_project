@@ -3,25 +3,21 @@ package dataTypes
 import (
 	"encoding/json"
 	"fmt"
+	dbdto "quizzy_game/internal/dto/dbDTO"
+	"quizzy_game/internal/enums"
 	"strings"
 )
 
-type ParticipantsTuple struct {
-	Ref   *User
-	Score int
-}
-
-// TODO: Need to have a participant/user type defined
 type Quiz struct {
-	Id            string                        `json:"id"`
-	Name          string                        `json:"name"`
-	QuizStatus    QuizStatus                    `json:"quizStatus"`
-	Category      Category                      `json:"category"`
-	Difficulty    Difficulty                    `json:"difficulty"`
-	Type          QuestionType                  `json:"type"`
-	Questions     map[string]*QuestionTriple    `json:"questions"`
-	Participants  map[string]*ParticipantsTuple `json:"participants"`
-	StatusChannel *chan QuizStatus              `json:"-"`
+	Id            string                    `json:"id"`
+	Name          string                    `json:"name"`
+	QuizStatus    enums.QuizStatus          `json:"quizStatus"`
+	Category      dbdto.CategoryIncomingDTO `json:"category"`
+	Difficulty    enums.Difficulty          `json:"difficulty"`
+	Type          enums.QuestionType        `json:"type"`
+	Questions     map[string]*Question      `json:"questions"`
+	Participants  map[string]*Participant   `json:"participants"`
+	StatusChannel *chan enums.QuizStatus    `json:"-"`
 }
 
 func (q Quiz) String() string {
@@ -51,11 +47,17 @@ func (q Quiz) ParticipantsAsString() string {
 	return strings.Join(names, ", ")
 }
 
-func (q Quiz) ScoreBoard() string {
-	var scoresList []string
-	for _, pt := range q.Participants {
-		scoresList = append(scoresList, fmt.Sprintf("%s: %d", pt.Ref.Name, pt.Score))
+func (q Quiz) ScoreBoard() []Participant {
+	var participants []Participant
+	for _, p := range q.Participants {
+		participants = append(participants, *p)
 	}
-	return strings.Join(scoresList, ", ")
+	return participants
+
+	// var scoresList []string
+	// for _, pt := range q.Participants {
+	// 	scoresList = append(scoresList, fmt.Sprintf("%s: %d", pt.Ref.Name, pt.Score))
+	// }
+	// return strings.Join(scoresList, ", ")
 
 }

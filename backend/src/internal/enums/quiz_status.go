@@ -1,4 +1,4 @@
-package dataTypes
+package enums
 
 type QuizStatus string
 

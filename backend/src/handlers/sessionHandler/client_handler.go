@@ -1,11 +1,11 @@
-package clientManagement
+package sessionHandler
 
 import (
 	"fmt"
 	"log"
 	"net/http"
+	"quizzy_game/handlers/quizHandler"
 	"quizzy_game/internal/dataTypes"
-	quizmanagement "quizzy_game/quizManagement"
 	"strings"
 	"sync"
 
@@ -61,7 +61,7 @@ func reader(conn *websocket.Conn, user *dataTypes.User) {
 
 		// Adding data to the channel should also be synchronized
 		mutex.Lock()
-		go quizmanagement.HandleQuizUpdate(msg, user)
+		go quizHandler.HandleQuizUpdate(msg, user)
 		err = conn.WriteMessage(messageType, p)
 		mutex.Unlock()
 

@@ -6,7 +6,9 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"quizzy_game/internal/dataTypes"
+	dbdto "quizzy_game/internal/dto/dbDTO"
+	frontdto "quizzy_game/internal/dto/frontDTO"
+	"quizzy_game/internal/enums"
 	"strconv"
 	"time"
 )
@@ -15,7 +17,7 @@ func GetQuestionsWeb(w http.ResponseWriter, r *http.Request) {
 
 	for x := 10; x < 33; x += 7 {
 		timer := time.NewTimer(7 * time.Second)
-		questions := GetQuestions(x, dataTypes.Easy, dataTypes.MultipleChoice)
+		questions := GetQuestions(x, enums.Easy, enums.MultipleChoice)
 		// https://opentdb.com/api.php?amount=10&category=9&difficulty=easy&type=multiple
 
 		fmt.Printf("got /questions request\n")
@@ -37,10 +39,22 @@ func GetCategoriesWeb(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func GetCategories() []dataTypes.Category {
+func GetQuizOptions(w http.ResponseWriter, r *http.Request) {
+
+	categories := GetCategories()
+	options := frontdto.QuizOptionsDTO{
+		Difficulty: []enums.Difficulty{enums.Easy, enums.Medium, enums.Hard},
+		Type:       []enums.QuestionType{enums.TrueFalse, enums.MultipleChoice},
+		Category:   categories,
+	}
+
+	io.WriteString(w, options.String())
+}
+
+func GetCategories() []dbdto.CategoryIncomingDTO {
 
 	type CategoryResponse struct {
-		Categories []dataTypes.Category `json:"trivia_categories"`
+		Categories []dbdto.CategoryIncomingDTO `json:"trivia_categories"`
 	}
 
 	categoryRequestUrl := "https://opentdb.com/api_category.php"
@@ -54,11 +68,11 @@ func GetCategories() []dataTypes.Category {
 	return cr.Categories
 }
 
-func GetQuestions(categoryId int, difficulty dataTypes.Difficulty, quizType dataTypes.QuestionType) []dataTypes.Question {
+func GetQuestions(categoryId int, difficulty enums.Difficulty, quizType enums.QuestionType) []dbdto.QuestionIncomingDTO {
 
 	type QuestionResponse struct {
-		ResponseCode int                  `json:"response_code"`
-		Questions    []dataTypes.Question `json:"results"`
+		ResponseCode int                         `json:"response_code"`
+		Questions    []dbdto.QuestionIncomingDTO `json:"results"`
 	}
 
 	questionRequestUrl := "https://opentdb.com/api.php?amount=10"
@@ -72,7 +86,7 @@ func GetQuestions(categoryId int, difficulty dataTypes.Difficulty, quizType data
 	for {
 		if retries >= 3 {
 			fmt.Println("GetQuestions: Max retries exceeded!")
-			return []dataTypes.Question{}
+			return []dbdto.QuestionIncomingDTO{}
 		}
 		responseBody := getSessionRequest(questionRequestUrl)
 

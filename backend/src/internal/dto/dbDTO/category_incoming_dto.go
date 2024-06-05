@@ -1,16 +1,16 @@
-package dataTypes
+package dbdto
 
 import (
 	"encoding/json"
 	"fmt"
 )
 
-type Category struct {
+type CategoryIncomingDTO struct {
 	Id   int    `json:"id"`
 	Name string `json:"name"`
 }
 
-func (c Category) String() string {
+func (c CategoryIncomingDTO) String() string {
 	// Convert the Category struct to a JSON string for better visibility
 	cJSON, err := json.MarshalIndent(c, "", "    ")
 	if err != nil {

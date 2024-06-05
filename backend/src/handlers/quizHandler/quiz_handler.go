@@ -1,9 +1,11 @@
-package quizmanagement
+package quizHandler
 
 import (
 	"fmt"
 	"quizzy_game/api"
 	"quizzy_game/internal/dataTypes"
+	dbdto "quizzy_game/internal/dto/dbDTO"
+	"quizzy_game/internal/enums"
 	"strconv"
 	"strings"
 	"sync"
@@ -13,11 +15,11 @@ import (
 )
 
 var quizzes = make(map[string]*dataTypes.Quiz)
-var categories = make(map[int]dataTypes.Category)
+var categories = make(map[int]dbdto.CategoryIncomingDTO)
 var answerTimeout = 10 * time.Second
 
 func init() {
-	var dbCategories []dataTypes.Category = api.GetCategories()
+	var dbCategories []dbdto.CategoryIncomingDTO = api.GetCategories()
 	for _, category := range dbCategories {
 		categories[category.Id] = category
 	}
@@ -28,8 +30,6 @@ func init() {
 func HandleQuizUpdate(quizUpdate string, user *dataTypes.User) {
 
 	responseChannel := user.MsgChannel
-	// broadcastChannel := make(chan string)
-	// var hwg sync.WaitGroup
 
 	fmt.Println("CLIENT REQUEST: ", quizUpdate)
 	input := strings.Fields(quizUpdate)
@@ -51,12 +51,12 @@ func HandleQuizUpdate(quizUpdate string, user *dataTypes.User) {
 		if len(input) == 5 {
 			categoryId, _ := strconv.Atoi(input[2])
 			category := categories[categoryId]
-			difficulty := dataTypes.Difficulty(input[3])
-			quizType := dataTypes.QuestionType(input[4])
+			difficulty := enums.Difficulty(input[3])
+			quizType := enums.QuestionType(input[4])
 			newQuizId = createQuiz(quizName, category, difficulty, quizType)
 
 		} else {
-			newQuizId = createQuiz(quizName, categories[9], dataTypes.Easy, dataTypes.MultipleChoice)
+			newQuizId = createQuiz(quizName, categories[9], enums.Easy, enums.MultipleChoice)
 		}
 
 		newQuiz, ok := quizzes[newQuizId]
@@ -67,7 +67,6 @@ func HandleQuizUpdate(quizUpdate string, user *dataTypes.User) {
 		}
 		joinQuiz(newQuizId, user)
 		responseChannel <- fmt.Sprintf("QuizID: %s, QuizStatus: %s, participants: %s ", newQuizId, newQuiz.QuizStatus, newQuiz.ParticipantsAsString())
-
 	case "joinQuiz":
 		if len(input) < 2 {
 			responseChannel <- "Not enough input parameters! Try: joinQuiz <quizID>"
@@ -128,23 +127,23 @@ func HandleQuizUpdate(quizUpdate string, user *dataTypes.User) {
 
 }
 
-func createQuiz(name string, category dataTypes.Category, difficulty dataTypes.Difficulty, quizType dataTypes.QuestionType) string {
+func createQuiz(name string, category dbdto.CategoryIncomingDTO, difficulty enums.Difficulty, quizType enums.QuestionType) string {
 
-	questions := api.GetQuestions(category.Id, difficulty, quizType)
-	questionTriples := make(map[string]*dataTypes.QuestionTriple)
-	for _, question := range questions {
-		questionTriple := question.ToTriple()
-		questionTriples[questionTriple.Id] = &questionTriple
+	questionIncomingDtos := api.GetQuestions(category.Id, difficulty, quizType)
+	questions := make(map[string]*dataTypes.Question)
+	for _, qIDto := range questionIncomingDtos {
+		q := dataTypes.NewQuestion(qIDto)
+		questions[q.Id] = &q
 	}
 	newQuiz := dataTypes.Quiz{
 		Id:           uuid.NewString(),
 		Name:         name,
-		QuizStatus:   dataTypes.StatusInitialized,
+		QuizStatus:   enums.StatusInitialized,
 		Category:     category,
-		Difficulty:   dataTypes.Easy,
-		Type:         dataTypes.MultipleChoice,
-		Questions:    questionTriples,
-		Participants: make(map[string]*dataTypes.ParticipantsTuple),
+		Difficulty:   enums.Easy,
+		Type:         enums.MultipleChoice,
+		Questions:    questions,
+		Participants: make(map[string]*dataTypes.Participant),
 	}
 
 	quizzes[newQuiz.Id] = &newQuiz
@@ -164,11 +163,7 @@ func joinQuiz(quizID string, user *dataTypes.User) string {
 
 	}
 
-	participantsTuple := dataTypes.ParticipantsTuple{
-		Ref:   user,
-		Score: 0,
-	}
-	quiz.Participants[user.Id] = &participantsTuple
+	quiz.Participants[user.Id] = dataTypes.NewParticipant(user)
 	fmt.Printf("Added user %s to Quiz: %s\n", user.Name, quizID)
 
 	msg := fmt.Sprintf("QuizID: %s, QuizStatus: %s, participants: %s\n", quiz.Id, quiz.QuizStatus, quiz.ParticipantsAsString())
@@ -197,16 +192,16 @@ func startQuiz(quizID string) string {
 	switch {
 	case !ok:
 		return "Error Starting. Quiz not found. ID: " + quizID
-	case quiz.QuizStatus != dataTypes.StatusInitialized:
+	case quiz.QuizStatus != enums.StatusInitialized:
 		return fmt.Sprintf("Quiz could not start. Expected status Initialized but got " + string(quiz.QuizStatus))
 	case len(quiz.Participants) < 2:
 		return fmt.Sprintf("Quiz could not start. Expected PARTICIPANTS to contain more than 2. got %d.", len(quiz.Participants))
 	default:
-		quiz.QuizStatus = dataTypes.StatusStart
-		fmt.Println("Quiz Status updated to: ", dataTypes.StatusStart)
+		quiz.QuizStatus = enums.StatusStart
+		fmt.Println("Quiz Status updated to: ", enums.StatusStart)
 
 		var wg sync.WaitGroup
-		statusChannel := make(chan dataTypes.QuizStatus)
+		statusChannel := make(chan enums.QuizStatus)
 		quiz.StatusChannel = &statusChannel
 
 		wg.Add(1)
@@ -214,10 +209,10 @@ func startQuiz(quizID string) string {
 
 		questionLoopRoutine(quizID, statusChannel)
 
-		quiz.QuizStatus = dataTypes.StatusEnded
+		quiz.QuizStatus = enums.StatusEnded
 		scoreBoardMsg := fmt.Sprintf("QuizID: %s, QuizStatus: %s, participants: %s\n", quiz.Id, quiz.QuizStatus, quiz.ScoreBoard())
 		broadcastToParticipants(quizID, scoreBoardMsg)
-		fmt.Println("Quiz Status updated to: ", dataTypes.StatusEnded)
+		fmt.Println("Quiz Status updated to: ", enums.StatusEnded)
 		fmt.Println("Quiz Scoreboard: ", scoreBoardMsg)
 
 		wg.Wait() // Wait for all goroutines to finish
@@ -235,9 +230,9 @@ func stopQuiz(quizID string) string {
 	}
 	fmt.Println("Stopping Quiz with ID: ", quiz.Id)
 
-	quiz.QuizStatus = dataTypes.StatusStopped
-	*quiz.StatusChannel <- dataTypes.StatusStopped
-	msg := fmt.Sprintf("Quiz Status updated to: %s", dataTypes.StatusStopped)
+	quiz.QuizStatus = enums.StatusStopped
+	*quiz.StatusChannel <- enums.StatusStopped
+	msg := fmt.Sprintf("Quiz Status updated to: %s", enums.StatusStopped)
 	broadcastToParticipants(quizID, msg)
 	return msg
 }
@@ -260,12 +255,12 @@ func resetQuiz(quizID string) string {
 	}
 	fmt.Println("Scores for users reset for Quiz with ID: ", quiz.Id)
 
-	quiz.QuizStatus = dataTypes.StatusInitialized
-	return fmt.Sprintf("Quiz Status updated to: %s", dataTypes.StatusInitialized)
+	quiz.QuizStatus = enums.StatusInitialized
+	return fmt.Sprintf("Quiz Status updated to: %s", enums.StatusInitialized)
 
 }
 
-func questionLoopRoutine(quizID string, statusChannel chan dataTypes.QuizStatus) {
+func questionLoopRoutine(quizID string, statusChannel chan enums.QuizStatus) {
 	quiz, ok := quizzes[quizID]
 	if !ok {
 		fmt.Println("Question Loop: Quiz not found.")
@@ -278,8 +273,8 @@ func questionLoopRoutine(quizID string, statusChannel chan dataTypes.QuizStatus)
 	}
 
 	for _, question := range quiz.Questions {
-		if quiz.QuizStatus == dataTypes.StatusStopped {
-			statusChannel <- dataTypes.StatusStopped
+		if quiz.QuizStatus == enums.StatusStopped {
+			statusChannel <- enums.StatusStopped
 			return
 		}
 		if question.IsAskedStatus {
@@ -287,23 +282,23 @@ func questionLoopRoutine(quizID string, statusChannel chan dataTypes.QuizStatus)
 			break
 		}
 
-		quiz.QuizStatus = dataTypes.StatusQuizTime
-		fmt.Println("Quiz Status updated to: ", dataTypes.StatusQuizTime)
+		quiz.QuizStatus = enums.StatusQuizTime
+		fmt.Println("Quiz Status updated to: ", enums.StatusQuizTime)
 
 		quizMsg := fmt.Sprintf("QuestionID: %s, Question: %s, Options: %s, CorrectAnswer: %s",
-			question.Id, question.Ref.Question, question.Ref.GetOptions(), question.Ref.CorrectAnswer)
-		statusChannel <- dataTypes.StatusQuizTime
+			question.Id, question.GetQuestion(), question.GetOptions(), question.GetCorrectAnswer())
+		statusChannel <- enums.StatusQuizTime
 		question.IsAskedStatus = true
 		question.LastAskedTime = time.Now()
 		broadcastToParticipants(quizID, quizMsg)
 
 		for status := range statusChannel {
-			if status == dataTypes.StatusQuizTimeEnded {
+			if status == enums.StatusQuizTimeEnded {
 				fmt.Println("Quiz Time Ended!")
-				quiz.QuizStatus = dataTypes.StatusEvaluation
-				fmt.Println("Quiz Status updated to: ", dataTypes.StatusEvaluation)
+				quiz.QuizStatus = enums.StatusEvaluation
+				fmt.Println("Quiz Status updated to: ", enums.StatusEvaluation)
 				break
-			} else if status == dataTypes.StatusStopped {
+			} else if status == enums.StatusStopped {
 				return
 
 			}
@@ -311,20 +306,20 @@ func questionLoopRoutine(quizID string, statusChannel chan dataTypes.QuizStatus)
 	}
 }
 
-func timerRoutine(wg *sync.WaitGroup, statusChannel chan dataTypes.QuizStatus) {
+func timerRoutine(wg *sync.WaitGroup, statusChannel chan enums.QuizStatus) {
 	TAG := "TIMER_ROUTINE: "
 
 	for status := range statusChannel {
 		fmt.Println(TAG, "RECEIVED status: ", status)
 
-		if status == dataTypes.StatusQuizTime {
+		if status == enums.StatusQuizTime {
 			answerTimer := time.NewTimer(answerTimeout)
 			fmt.Println(TAG, "Answer timer started!")
 			<-answerTimer.C
-			statusChannel <- dataTypes.StatusQuizTimeEnded
+			statusChannel <- enums.StatusQuizTimeEnded
 			fmt.Println(TAG, "Answer timer ENDED!")
 
-		} else if status == dataTypes.StatusEnded || status == dataTypes.StatusStopped {
+		} else if status == enums.StatusEnded || status == enums.StatusStopped {
 			fmt.Println(TAG, "Shutting down the timer GoRoutine!")
 			defer wg.Done()
 			return
@@ -350,7 +345,7 @@ func handleAnswer(quizID string, questionID string, answer string, timeReceived 
 		fmt.Println(TAG, "Question has not been asked.")
 		return
 	}
-	if answer != question.Ref.CorrectAnswer {
+	if answer != question.GetCorrectAnswer() {
 		fmt.Println(TAG, "Wrong answer. 0 points")
 		return
 	}
@@ -389,7 +384,7 @@ func broadcastToParticipants(quizID, msg string) {
 	wg.Wait()
 }
 
-func broadcastToParticipant(participant *dataTypes.ParticipantsTuple, msg string, wg *sync.WaitGroup) {
+func broadcastToParticipant(participant *dataTypes.Participant, msg string, wg *sync.WaitGroup) {
 	defer wg.Done()
 	defer func() {
 		if r := recover(); r != nil {
