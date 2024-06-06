@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	dbdto "quizzy_game/internal/dto/dbDTO"
-	"quizzy_game/internal/enums"
+	"quizzy_game/internal/enums/questionType"
+	"quizzy_game/internal/enums/quizDifficulty"
 )
 
 type QuizOptionsDTO struct {
-	Difficulty []enums.Difficulty          `json:"difficulties"`
-	Type       []enums.QuestionType        `json:"types"`
+	Difficulty []quizDifficulty.Difficulty `json:"difficulties"`
+	Type       []questionType.QuestionType `json:"types"`
 	Category   []dbdto.CategoryIncomingDTO `json:"categories"`
 }
 

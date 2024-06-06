@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"quizzy_game/api"
 	"quizzy_game/handlers/sessionHandler"
+	"quizzy_game/network"
 )
 
 func getFrontPage(w http.ResponseWriter, r *http.Request) {
@@ -15,9 +15,9 @@ func getFrontPage(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	http.HandleFunc("/", getFrontPage)
-	http.HandleFunc("/questions", api.GetQuestionsWeb)
-	http.HandleFunc("/categories", api.GetCategoriesWeb)
-	http.HandleFunc("/quiz_options", api.GetQuizOptions)
+	http.HandleFunc("/questions", network.GetQuestionsWeb)
+	http.HandleFunc("/categories", network.GetCategoriesWeb)
+	http.HandleFunc("/quiz_options", network.GetQuizOptions)
 	http.HandleFunc("/ws", sessionHandler.WsEndpoint)
 	http.HandleFunc("/ws/", sessionHandler.WsEndpoint)
 

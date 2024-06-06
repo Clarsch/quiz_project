@@ -9,23 +9,42 @@ import (
 )
 
 type Question struct {
-	Id            string
-	ref           *dbdto.QuestionIncomingDTO
-	IsAskedStatus bool
-	LastAskedTime time.Time
+	Id              string
+	ref             *dbdto.QuestionIncomingDTO
+	Options         []AnswerOption
+	CorrectOptionId string
+	IsAskedStatus   bool
+	LastAskedTime   time.Time
+}
+
+type AnswerOption struct {
+	OptionId string
+	Answer   string
 }
 
 func NewQuestion(q dbdto.QuestionIncomingDTO) Question {
 	questionId := uuid.NewString()
-	return Question{questionId, &q, false, time.Time{}}
-}
+	var options []AnswerOption
 
-func (q Question) GetOptions() []string {
-	options := append(q.ref.WrongAnswer, q.ref.CorrectAnswer)
+	correctOptionId := uuid.NewString()
+	options = append(options, AnswerOption{correctOptionId, q.CorrectAnswer})
+	for _, o := range q.WrongAnswer {
+		optionId := uuid.NewString()
+		options = append(options, AnswerOption{optionId, o})
+	}
 	rand.Shuffle(len(options), func(i, j int) {
 		options[i], options[j] = options[j], options[i]
 	})
-	return options
+
+	return Question{
+		questionId,
+		&q,
+		options,
+		correctOptionId,
+		false,
+		time.Time{},
+	}
+
 }
 
 func (q Question) GetQuestion() string {
@@ -33,7 +52,13 @@ func (q Question) GetQuestion() string {
 }
 
 func (q Question) GetCorrectAnswer() string {
-	return q.ref.CorrectAnswer
+	for _, o := range q.Options {
+		if o.OptionId == q.CorrectOptionId {
+			return o.Answer
+		}
+	}
+	return "Could not find correct Answer"
+
 }
 
 func (q Question) IsNotAsked() bool {

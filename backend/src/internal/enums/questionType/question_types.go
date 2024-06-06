@@ -1,4 +1,4 @@
-package enums
+package questionType
 
 type QuestionType string
 

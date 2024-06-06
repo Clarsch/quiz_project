@@ -3,16 +3,16 @@ package dbdto
 import (
 	"encoding/json"
 	"fmt"
-	"quizzy_game/internal/enums"
+	"quizzy_game/internal/enums/questionType"
 )
 
 type QuestionIncomingDTO struct {
-	Type          enums.QuestionType `json:"type"`
-	Difficulty    string             `json:"difficulty"`
-	Category      string             `json:"category"`
-	Question      string             `json:"question"`
-	CorrectAnswer string             `json:"correct_answer"`
-	WrongAnswer   []string           `json:"incorrect_answers"`
+	Type          questionType.QuestionType `json:"type"`
+	Difficulty    string                    `json:"difficulty"`
+	Category      string                    `json:"category"`
+	Question      string                    `json:"question"`
+	CorrectAnswer string                    `json:"correct_answer"`
+	WrongAnswer   []string                  `json:"incorrect_answers"`
 }
 
 func (q QuestionIncomingDTO) String() string {

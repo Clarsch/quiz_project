@@ -4,20 +4,22 @@ import (
 	"encoding/json"
 	"fmt"
 	dbdto "quizzy_game/internal/dto/dbDTO"
-	"quizzy_game/internal/enums"
+	"quizzy_game/internal/enums/questionType"
+	"quizzy_game/internal/enums/quizDifficulty"
+	"quizzy_game/internal/enums/quizStatus"
 	"strings"
 )
 
 type Quiz struct {
-	Id            string                    `json:"id"`
-	Name          string                    `json:"name"`
-	QuizStatus    enums.QuizStatus          `json:"quizStatus"`
-	Category      dbdto.CategoryIncomingDTO `json:"category"`
-	Difficulty    enums.Difficulty          `json:"difficulty"`
-	Type          enums.QuestionType        `json:"type"`
-	Questions     map[string]*Question      `json:"questions"`
-	Participants  map[string]*Participant   `json:"participants"`
-	StatusChannel *chan enums.QuizStatus    `json:"-"`
+	Id            string                      `json:"id"`
+	Name          string                      `json:"name"`
+	QuizStatus    quizStatus.QuizStatus       `json:"quizStatus"`
+	Category      dbdto.CategoryIncomingDTO   `json:"category"`
+	Difficulty    quizDifficulty.Difficulty   `json:"difficulty"`
+	Type          questionType.QuestionType   `json:"type"`
+	Questions     map[string]*Question        `json:"questions"`
+	Participants  map[string]*Participant     `json:"participants"`
+	StatusChannel *chan quizStatus.QuizStatus `json:"-"`
 }
 
 func (q Quiz) String() string {
@@ -53,11 +55,5 @@ func (q Quiz) ScoreBoard() []Participant {
 		participants = append(participants, *p)
 	}
 	return participants
-
-	// var scoresList []string
-	// for _, pt := range q.Participants {
-	// 	scoresList = append(scoresList, fmt.Sprintf("%s: %d", pt.Ref.Name, pt.Score))
-	// }
-	// return strings.Join(scoresList, ", ")
 
 }

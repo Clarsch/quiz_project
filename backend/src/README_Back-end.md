@@ -21,7 +21,7 @@ Start backend by terminal:
 In VSCode open the Postman plugin.
 Start a new WebSocket Request.
 connect websocket to the following:
-    ws://localhost:3333/ws
+    ws://localhost:8000/ws
 
 ## Interactions
 

@@ -1,4 +1,4 @@
-package api
+package network
 
 import (
 	"encoding/json"
@@ -8,7 +8,8 @@ import (
 	"net/http"
 	dbdto "quizzy_game/internal/dto/dbDTO"
 	frontdto "quizzy_game/internal/dto/frontDTO"
-	"quizzy_game/internal/enums"
+	"quizzy_game/internal/enums/questionType"
+	"quizzy_game/internal/enums/quizDifficulty"
 	"strconv"
 	"time"
 )
@@ -17,7 +18,7 @@ func GetQuestionsWeb(w http.ResponseWriter, r *http.Request) {
 
 	for x := 10; x < 33; x += 7 {
 		timer := time.NewTimer(7 * time.Second)
-		questions := GetQuestions(x, enums.Easy, enums.MultipleChoice)
+		questions := GetQuestions(x, quizDifficulty.Easy, questionType.MultipleChoice)
 		// https://opentdb.com/api.php?amount=10&category=9&difficulty=easy&type=multiple
 
 		fmt.Printf("got /questions request\n")
@@ -43,8 +44,8 @@ func GetQuizOptions(w http.ResponseWriter, r *http.Request) {
 
 	categories := GetCategories()
 	options := frontdto.QuizOptionsDTO{
-		Difficulty: []enums.Difficulty{enums.Easy, enums.Medium, enums.Hard},
-		Type:       []enums.QuestionType{enums.TrueFalse, enums.MultipleChoice},
+		Difficulty: []quizDifficulty.Difficulty{quizDifficulty.Easy, quizDifficulty.Medium, quizDifficulty.Hard},
+		Type:       []questionType.QuestionType{questionType.TrueFalse, questionType.MultipleChoice},
 		Category:   categories,
 	}
 
@@ -68,7 +69,7 @@ func GetCategories() []dbdto.CategoryIncomingDTO {
 	return cr.Categories
 }
 
-func GetQuestions(categoryId int, difficulty enums.Difficulty, quizType enums.QuestionType) []dbdto.QuestionIncomingDTO {
+func GetQuestions(categoryId int, difficulty quizDifficulty.Difficulty, quizType questionType.QuestionType) []dbdto.QuestionIncomingDTO {
 
 	type QuestionResponse struct {
 		ResponseCode int                         `json:"response_code"`

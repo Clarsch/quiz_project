@@ -1,9 +1,9 @@
-package enums
+package requestcommand
 
 type QuizCommands string
 
 const (
-	createQuiz     = "create"
+	CreateQuiz     = "create"
 	JoinQuiz       = "join"
 	LeaveQuiz      = "leave"
 	StartQuiz      = "start"

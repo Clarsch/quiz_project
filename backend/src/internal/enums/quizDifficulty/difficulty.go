@@ -1,4 +1,4 @@
-package enums
+package quizDifficulty
 
 type Difficulty string
 
