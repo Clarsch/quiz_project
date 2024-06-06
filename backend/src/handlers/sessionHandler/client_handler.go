@@ -1,13 +1,17 @@
 package sessionHandler
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"quizzy_game/handlers/quizHandler"
 	"quizzy_game/internal/dataTypes"
+	frontdto "quizzy_game/internal/dto/frontDTO"
+	requestcommand "quizzy_game/internal/enums/requestCommands"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -43,34 +47,54 @@ func reader(conn *websocket.Conn, user *dataTypes.User) {
 	user.MsgChannel <- fmt.Sprintf("UserID: %s", user.Id)
 
 	for {
-		messageType, p, err := conn.ReadMessage()
-		if err != nil {
-			log.Println(err)
+		messageType, byteMsg, cErr := conn.ReadMessage()
+		if cErr != nil {
+			log.Println(cErr)
 			close(user.MsgChannel)
 			return
 		}
-		msg := string(p)
+		// Process the JSON request
+		processJSONRequest(conn, user, messageType, byteMsg)
+	}
+}
 
-		input := strings.Fields(msg)
-		if len(input) > 1 && input[0] == "setUsername" {
-			newUsername := input[1]
-			user.Name = newUsername
-			user.MsgChannel <- "Your Username has been updated to: " + newUsername
+func processJSONRequest(conn *websocket.Conn, user *dataTypes.User, messageType int, byteMsg []byte) {
+	var request frontdto.Request
+	mErr := json.Unmarshal(byteMsg, &request)
+	if mErr != nil {
+		fmt.Println("Error:", mErr)
+		user.MsgChannel <- fmt.Sprintf("Invalid input! Error: %s\n", mErr)
+		return
+	}
+	request.ReceivedTime = time.Now()
 
+	if request.RequestType == requestcommand.SetUsername {
+		jsonData, _ := json.Marshal(request.Data)
+		var setUsernameData frontdto.SetUsernameRequestDTO
+		err := json.Unmarshal(jsonData, &setUsernameData)
+		if err != nil {
+			fmt.Println("Error:", err)
+			user.MsgChannel <- fmt.Sprintf("Invalid input! Error: %s\n", err)
+			user.MsgChannel <- fmt.Sprintf("Example of correct json input: %s\n", setUsernameData.GetExample())
+			return
 		}
-
+		user.Name = setUsernameData.Username
+		user.MsgChannel <- "Your Username has been updated to: " + setUsernameData.Username
+	} else {
 		// Adding data to the channel should also be synchronized
+		var mutex sync.Mutex
 		mutex.Lock()
-		go quizHandler.HandleQuizUpdate(msg, user)
-		err = conn.WriteMessage(messageType, p)
+		go quizHandler.HandleQuizRequest(request, user)
+		cErr := conn.WriteMessage(messageType, byteMsg)
 		mutex.Unlock()
 
-		if err != nil {
-			log.Println(err)
+		if cErr != nil {
+			log.Println(cErr)
 			close(user.MsgChannel)
 			return
 		}
 	}
+
 }
 
 func WsEndpoint(w http.ResponseWriter, r *http.Request) {
