@@ -32,25 +32,23 @@ func HandleQuizRequest(request frontdto.Request, user *dataTypes.User) {
 
 	responseChannel := user.MsgChannel
 
-	jsonData, _ := json.Marshal(request.Data)
+	jsonRequestData, _ := json.Marshal(request.Data)
 
 	if request.RequestType == requestcommand.CreateQuiz {
-		newQuizId := createQuiz(jsonData, user)
-		newQuiz, ok := quizzes[newQuizId]
+		newQuizId := createQuiz(jsonRequestData, user)
+		_, ok := quizzes[newQuizId]
 		if !ok {
 			fmt.Println("Quiz not found.")
 			responseChannel <- "Something went wrong. Error Creating Quiz!"
 			return
 		}
 		joinQuiz(newQuizId, user)
-		responseChannel <- fmt.Sprintf("QuizID: %s, QuizStatus: %s, participants: %s ", newQuizId, newQuiz.QuizStatus, newQuiz.ParticipantsAsString())
 
 	} else if request.RequestType == requestcommand.AnswerQuestion {
-		handleAnswer(jsonData, request.ReceivedTime, user)
-
+		handleAnswer(jsonRequestData, request.ReceivedTime, user)
 	} else {
 		var updateData frontdto.QuizUpdateRequestDTO
-		err := json.Unmarshal(jsonData, &updateData)
+		err := json.Unmarshal(jsonRequestData, &updateData)
 		if err != nil {
 			fmt.Println("Error:", err)
 			responseChannel <- fmt.Sprintf("Invalid input! Error: %s\n", err)
@@ -64,6 +62,8 @@ func HandleQuizRequest(request frontdto.Request, user *dataTypes.User) {
 			responseChannel <- leaveQuiz(updateData.QuizId, user)
 		case requestcommand.StartQuiz:
 			responseChannel <- startQuiz(updateData.QuizId)
+		case requestcommand.StopQuiz:
+			responseChannel <- stopQuiz(updateData.QuizId)
 		case requestcommand.ResetQuiz:
 			responseChannel <- resetQuiz(updateData.QuizId)
 		default:
@@ -126,8 +126,7 @@ func joinQuiz(quizID string, user *dataTypes.User) string {
 	quiz.Participants[user.Id] = dataTypes.NewParticipant(user)
 	fmt.Printf("Added user %s to Quiz: %s\n", user.Name, quizID)
 
-	msg := fmt.Sprintf("QuizID: %s, QuizStatus: %s, participants: %s\n", quiz.Id, quiz.QuizStatus, quiz.ParticipantsAsString())
-	go broadcastToParticipants(quizID, msg)
+	broadcastToParticipants(quizID, quiz.JsonString())
 	return "Sucessfully joined the quiz: " + quizID
 }
 
@@ -140,8 +139,7 @@ func leaveQuiz(quizID string, user *dataTypes.User) string {
 		delete(quiz.Participants, user.Id)
 		fmt.Printf("Deleted user %s from Quiz %s: \n", user.Name, quizID)
 	}
-	msg := fmt.Sprintf("QuizID: %s, QuizStatus: %s, participants: %s\n", quiz.Id, quiz.QuizStatus, quiz.ParticipantsAsString())
-	broadcastToParticipants(quizID, msg)
+	broadcastToParticipants(quizID, quiz.JsonString())
 	return fmt.Sprintf("User: %s left Quiz QuizID: %s\n", user.Name, quiz.Id)
 }
 
@@ -168,10 +166,9 @@ func startQuiz(quizID string) string {
 		questionLoopRoutine(quizID, statusChannel)
 
 		quiz.QuizStatus = quizstatus.StatusEnded
-		scoreBoardMsg := fmt.Sprintf("QuizID: %s, QuizStatus: %s, participants: %s\n", quiz.Id, quiz.QuizStatus, quiz.ScoreBoard())
-		broadcastToParticipants(quizID, scoreBoardMsg)
+		broadcastToParticipants(quizID, quiz.JsonString())
 		fmt.Println("Quiz Status updated to: ", quizstatus.StatusEnded)
-		fmt.Println("Quiz Scoreboard: ", scoreBoardMsg)
+		fmt.Println("Quiz Scoreboard: ", quiz.JsonString())
 
 		wg.Wait() // Wait for all goroutines to finish
 		close(statusChannel)
@@ -190,9 +187,7 @@ func stopQuiz(quizID string) string {
 
 	quiz.QuizStatus = quizstatus.StatusStopped
 	*quiz.StatusChannel <- quizstatus.StatusStopped
-	msg := fmt.Sprintf("Quiz Status updated to: %s", quizstatus.StatusStopped)
-	broadcastToParticipants(quizID, msg)
-	return msg
+	return quiz.JsonString()
 }
 
 func resetQuiz(quizID string) string {
@@ -214,8 +209,7 @@ func resetQuiz(quizID string) string {
 	fmt.Println("Scores for users reset for Quiz with ID: ", quiz.Id)
 
 	quiz.QuizStatus = quizstatus.StatusInitialized
-	return fmt.Sprintf("Quiz Status updated to: %s", quizstatus.StatusInitialized)
-
+	return quiz.JsonString()
 }
 
 func questionLoopRoutine(quizID string, statusChannel chan quizstatus.QuizStatus) {
@@ -243,12 +237,11 @@ func questionLoopRoutine(quizID string, statusChannel chan quizstatus.QuizStatus
 		quiz.QuizStatus = quizstatus.StatusQuizTime
 		fmt.Println("Quiz Status updated to: ", quizstatus.StatusQuizTime)
 
-		quizMsg := fmt.Sprintf("QuestionID: %s, Question: %s, Options: %s, CorrectAnswer: %s",
-			question.Id, question.GetQuestion(), question.Options, question.GetCorrectAnswer())
 		statusChannel <- quizstatus.StatusQuizTime
 		question.IsAskedStatus = true
 		question.LastAskedTime = time.Now()
-		broadcastToParticipants(quizID, quizMsg)
+		qq := dataTypes.QuizQuestion{QuizId: quiz.Id, Question: *question, TimeoutInSeconds: int(answerTimeout)}
+		broadcastToParticipants(quizID, qq.JsonString())
 
 		for status := range statusChannel {
 			if status == quizstatus.StatusQuizTimeEnded {
@@ -319,8 +312,9 @@ func handleAnswer(inputJson []byte, timeReceived time.Time, user *dataTypes.User
 	}
 	timeSpent := timeReceived.Sub(question.LastAskedTime)
 	fmt.Printf("%sTime spent on answer: %s\n", TAG, timeSpent)
+	communicationBuffer := 1 * time.Second
 
-	if timeSpent > answerTimeout {
+	if timeSpent > answerTimeout+communicationBuffer {
 		statusMsg := fmt.Sprintf("%sAnswer took too long. Spent time: %fm:%fs, allowed time: %f seconds.\n", TAG, timeSpent.Minutes(), timeSpent.Seconds(), answerTimeout.Seconds())
 		user.MsgChannel <- statusMsg
 		fmt.Println(statusMsg)
@@ -331,9 +325,15 @@ func handleAnswer(inputJson []byte, timeReceived time.Time, user *dataTypes.User
 	points := int((millSecRemain) / factor)
 	participant := quiz.Participants[user.Id]
 	participant.Score += int(points)
-	statusMsg := fmt.Sprintf("%sUser: %s earned %d points giving a total score at %d in Quiz: %s", TAG, participant.Ref.Name, int(points), participant.Score, quiz.Name)
-	user.MsgChannel <- statusMsg
-	fmt.Println(statusMsg)
+	result := frontdto.AnswerResultDTO{
+		QuizId:        quiz.Id,
+		QuestionId:    question.Id,
+		CorrectAnswer: question.GetCorrectAnswer(),
+		UserScore:     int(points),
+		ScoreBoard:    quiz.Participants}
+
+	user.MsgChannel <- result.JsonString()
+	fmt.Println(result.JsonString())
 }
 
 func broadcastToParticipants(quizID, msg string) {

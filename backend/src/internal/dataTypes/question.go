@@ -1,6 +1,8 @@
 package dataTypes
 
 import (
+	"encoding/json"
+	"fmt"
 	"math/rand"
 	dbdto "quizzy_game/internal/dto/dbDTO"
 	"time"
@@ -9,17 +11,18 @@ import (
 )
 
 type Question struct {
-	Id              string
-	ref             *dbdto.QuestionIncomingDTO
-	Options         []AnswerOption
-	CorrectOptionId string
-	IsAskedStatus   bool
-	LastAskedTime   time.Time
+	Id              string                     `json:"questionId"`
+	ref             *dbdto.QuestionIncomingDTO `json:"-"`
+	QuestionString  *string                    `json:"question"`
+	Options         []AnswerOption             `json:"options"`
+	CorrectOptionId string                     `json:"correctOptionId"`
+	IsAskedStatus   bool                       `json:"-"`
+	LastAskedTime   time.Time                  `json:"-"`
 }
 
 type AnswerOption struct {
-	OptionId string
-	Answer   string
+	OptionId string `json:"optionId"`
+	Answer   string `json:"option"`
 }
 
 func NewQuestion(q dbdto.QuestionIncomingDTO) Question {
@@ -39,6 +42,7 @@ func NewQuestion(q dbdto.QuestionIncomingDTO) Question {
 	return Question{
 		questionId,
 		&q,
+		&q.Question,
 		options,
 		correctOptionId,
 		false,
@@ -63,4 +67,20 @@ func (q Question) GetCorrectAnswer() string {
 
 func (q Question) IsNotAsked() bool {
 	return !q.IsAskedStatus
+}
+
+func (q Question) JsonString() string {
+	qJSON, err := json.MarshalIndent(q, "", "    ")
+	if err != nil {
+		return fmt.Sprintf("Error converting Question to JSON: %v", err)
+	}
+	return string(qJSON)
+}
+
+func (q QuizQuestion) JsonString() string {
+	qJSON, err := json.MarshalIndent(q, "", "    ")
+	if err != nil {
+		return fmt.Sprintf("Error converting QuizQuestion to JSON: %v", err)
+	}
+	return string(qJSON)
 }

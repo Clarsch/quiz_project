@@ -1,10 +1,23 @@
 package frontdto
 
-import "quizzy_game/internal/dataTypes"
+import (
+	"encoding/json"
+	"fmt"
+	"quizzy_game/internal/dataTypes"
+)
 
 type AnswerResultDTO struct {
 	QuizId        string                            `json:"quizId"`
 	QuestionId    string                            `json:"questionId"`
 	CorrectAnswer string                            `json:"correctAnswer"`
-	ScoreBoard    map[string]*dataTypes.Participant `json:"scores"`
+	UserScore     int                               `json:"userScore"`
+	ScoreBoard    map[string]*dataTypes.Participant `json:"scoreboard"`
+}
+
+func (q AnswerResultDTO) JsonString() string {
+	qJSON, err := json.MarshalIndent(q, "", "    ")
+	if err != nil {
+		return fmt.Sprintf("Error converting AnswerResultDTO to JSON: %v", err)
+	}
+	return string(qJSON)
 }

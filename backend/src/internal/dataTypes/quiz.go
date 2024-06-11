@@ -17,12 +17,18 @@ type Quiz struct {
 	Category      dbdto.CategoryIncomingDTO   `json:"category"`
 	Difficulty    quizDifficulty.Difficulty   `json:"difficulty"`
 	Type          questionType.QuestionType   `json:"type"`
-	Questions     map[string]*Question        `json:"questions"`
+	Questions     map[string]*Question        `json:"-"`
 	Participants  map[string]*Participant     `json:"participants"`
 	StatusChannel *chan quizStatus.QuizStatus `json:"-"`
 }
 
-func (q Quiz) String() string {
+type QuizQuestion struct {
+	QuizId           string   `json:"quizId"`
+	Question         Question `json:"question"`
+	TimeoutInSeconds int      `json:"timeoutInSeconds"`
+}
+
+func (q Quiz) JsonString() string {
 	qJSON, err := json.MarshalIndent(q, "", "    ")
 	if err != nil {
 		return fmt.Sprintf("Error converting Quiz to JSON: %v", err)

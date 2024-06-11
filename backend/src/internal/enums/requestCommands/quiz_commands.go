@@ -7,6 +7,7 @@ const (
 	JoinQuiz       = "join"
 	LeaveQuiz      = "leave"
 	StartQuiz      = "start"
+	StopQuiz       = "stop"
 	ResetQuiz      = "reset"
 	AnswerQuestion = "answer"
 )
