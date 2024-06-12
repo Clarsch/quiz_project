@@ -10,8 +10,6 @@ WORKDIR "$APP_HOME"
 COPY ./src ./
 
 RUN go build -o quizzapp_bin .
-RUN pwd
-RUN ls -la
 EXPOSE 8000
 
 ENTRYPOINT [ "./quizzapp_bin" ]
