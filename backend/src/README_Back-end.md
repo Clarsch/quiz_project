@@ -13,7 +13,7 @@ From VSCode: Install Postman plugin
 ### Run the back-end
 In your terminal:
 ````
-cd to folder tech-jobs-fair-hackathon-bari-2024-team3/backend/
+cd to folder quiz_project/backend/src/
 ````
 
 Start backend by terminal: 
