@@ -12,10 +12,14 @@ From VSCode: Install Postman plugin
 ## Run
 ### Run the back-end
 In your terminal:
-    cd to folder tech-jobs-fair-hackathon-bari-2024-team3/backend/
+````
+cd to folder tech-jobs-fair-hackathon-bari-2024-team3/backend/
+````
 
 Start backend by terminal: 
-    go run main.go
+````
+go run main.go
+````
 
 ### Run the Postman WebSocket for interactions
 In VSCode open the Postman plugin.
@@ -28,19 +32,17 @@ ws://localhost:8000/ws
 In the WebSocket you can send in requests to the backend and see the results in the terminal of the backend:
 __Commands:__
 
-
-
+````
 - printing all quizzes data:
     - print
 
+- setUsername <newUsername>
 
-
-setUsername <newUsername>
-
-createQuiz <quizName> 
-createQuiz <quizName> <categoryId(9-32)> <easy||medium||hard> <multiple||boolean>
-joinQuiz <quizID>
-leaveQuiz <quizID>
-startQuiz <quizID>
-answerQuestion <QuizID> <QuestionID> <Answer>
+- createQuiz <quizName> 
+- createQuiz <quizName> <categoryId(9-32)> <easy||medium||hard> <multiple||boolean>
+- joinQuiz <quizID>
+- leaveQuiz <quizID>
+- startQuiz <quizID>
+- answerQuestion <QuizID> <QuestionID> <Answer>
+````
 
